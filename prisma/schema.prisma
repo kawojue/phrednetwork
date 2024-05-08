@@ -1,0 +1,390 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id              String                @id @default(auto()) @map("_id") @db.ObjectId
+    fullname        String
+    username        String                @unique
+    email           String                @unique
+    password        String
+    role            Roles                 @default(user)
+    userStatus      UserStatus            @default(Active)
+    wallet          Wallet?
+    profile         Profile?
+    advert          Advert?
+    validation      Validation?
+    membership      Membership?
+    verification    Verification?
+    jobs            Job[]
+    likes           Like[]
+    replies         Reply[]
+    followers       Follow[]              @relation("UserFollowers")
+    following       Follow[]              @relation("UserFollowing")
+    articles        Article[]
+    comments        Comment[]
+    bookmarks       Bookmark[]
+    joinRequest     JoinRequest[]
+    forumMessages   ForumMessage[]
+    notifications   Notification[]
+    participants    ForumParticipant[]
+    forumReadStatus UserForumReadStatus[]
+    createdAt       DateTime              @default(now())
+    updateAt        DateTime              @updatedAt
+}
+
+model Wallet {
+    id                   String      @id @default(auto()) @map("_id") @db.ObjectId
+    balance              Float       @default(0.00)
+    lastAmountApproved   Float       @default(0.00)
+    amountToWithdraw     Float       @default(0.00)
+    lastAmountSent       Float       @default(0.00)
+    lastApprovedAt       DateTime?
+    lastRequestedAt      DateTime?
+    requestingWithdrawal Boolean     @default(false)
+    txHistories          TxHistory[]
+    createdAt            DateTime    @default(now())
+    updatedAt            DateTime    @updatedAt
+    user                 User        @relation(fields: [userId], references: [id])
+    userId               String      @unique @db.ObjectId
+}
+
+model TxHistory {
+    id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+    reference          String    @unique
+    amount             Float     @default(0.00)
+    status             String
+    totalFee           Float?
+    paystackFee        Float?
+    processsingFee     Float?
+    createdAt          DateTime  @default(now())
+    channel            String?
+    type               TxType?
+    source             TxSource?
+    authorization_code String?
+    updatedAt          DateTime  @updatedAt
+    wallet             Wallet    @relation(references: [id], fields: [walletId])
+    walletId           String    @unique @db.ObjectId
+}
+
+model Adminitor {
+    id         String    @id @default(auto()) @map("_id") @db.ObjectId
+    fullname   String
+    email      String    @unique
+    password   String
+    superAdmin Boolean   @default(false)
+    role       Roles
+    avatar     File?
+    jobs       Job[]
+    articles   Article[]
+    createdAt  DateTime  @default(now())
+}
+
+model Follow {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    follower    User     @relation("UserFollowers", fields: [followerId], references: [id])
+    followerId  String   @db.ObjectId
+    following   User     @relation("UserFollowing", fields: [followingId], references: [id])
+    followingId String   @db.ObjectId
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    @@unique([followerId, followingId])
+}
+
+model Profile {
+    id            String         @id @default(auto()) @map("_id") @db.ObjectId
+    bio           String?
+    avatar        File?
+    createdAt     DateTime       @default(now())
+    updatedAt     DateTime       @updatedAt
+    accountDetail AccountDetail?
+    user          User           @relation(fields: [userId], references: [id])
+    userId        String         @unique @db.ObjectId
+}
+
+model AccountDetail {
+    id            String  @id @default(auto()) @map("_id") @db.ObjectId
+    bankCode      String
+    accountNumber String
+    accountName   String
+    bankName      String
+    profile       Profile @relation(references: [id], fields: [profileId])
+    profileId     String  @unique @db.ObjectId
+}
+
+model Validation {
+    id           String   @id @default(auto()) @map("_id") @db.ObjectId
+    token        String   @unique
+    randomCode   String?
+    token_expiry DateTime
+    user         User     @relation(fields: [userId], references: [id])
+    userId       String   @unique @db.ObjectId
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+}
+
+model Verification {
+    id                       String    @id @default(auto()) @map("_id") @db.ObjectId
+    verified                 Boolean   @default(false)
+    verifiedAt               DateTime?
+    durationStart            DateTime?
+    durationEnd              DateTime?
+    specialty                String?
+    licenseOrCertificateType String?
+    licenseNumber            String?
+    attachments              File[]
+    status                   String    @default("Not Verified")
+    isOwner                  Boolean?  @default(false)
+    email_verified           Boolean   @default(false)
+    user                     User      @relation(fields: [userId], references: [id])
+    userId                   String    @unique @db.ObjectId
+    submittedAt              DateTime?
+    createdAt                DateTime  @default(now())
+    updatedAt                DateTime  @updatedAt
+}
+
+model Membership {
+    id         String              @id @default(auto()) @map("_id") @db.ObjectId
+    duration   MemebershipDuration
+    memberedAt DateTime
+    amountPaid Float               @default(0.00)
+    user       User                @relation(fields: [userId], references: [id])
+    userId     String              @unique @db.ObjectId
+}
+
+model Notification {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    title       String
+    description String?
+    notifiedAt  DateTime @default(now())
+    read        Boolean  @default(false)
+    user        User     @relation(fields: [userId], references: [id])
+    userId      String   @unique @db.ObjectId
+}
+
+model Article {
+    id               String     @id @default(auto()) @map("_id") @db.ObjectId
+    content          String
+    coverPhoto       File
+    title            String
+    categories       String[]
+    views            Int        @default(0)
+    readingTime      String
+    categoriesText   String
+    pending_approval Boolean    @default(true)
+    publishedAt      DateTime   @default(now())
+    approvedAt       DateTime?
+    editedAt         DateTime   @updatedAt
+    boosting         Boosting?
+    likes            Like[]
+    comments         Comment[]
+    bookmarks        Bookmark[]
+    author           User?      @relation(fields: [authorId], references: [id])
+    authorId         String?    @unique @db.ObjectId
+    adminitor        Adminitor? @relation(fields: [adminitorId], references: [id])
+    adminitorId      String?    @db.ObjectId
+
+    @@index([categoriesText], name: "categoriesIndex")
+}
+
+model Reply {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    content   String
+    repliedAt DateTime @default(now())
+    comment   Comment  @relation(references: [id], fields: [commentId])
+    commentId String   @db.ObjectId
+    user      User?    @relation(references: [id], fields: [userId])
+    userId    String?  @db.ObjectId
+
+    @@unique([commentId, userId])
+}
+
+model Comment {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    content     String
+    replies     Reply[]
+    commentedAt DateTime @default(now())
+    likes       Like[]
+    article     Article  @relation(fields: [articleId], references: [id])
+    articleId   String   @db.ObjectId
+    user        User?    @relation(references: [id], fields: [userId])
+    userId      String?  @db.ObjectId
+
+    @@unique([userId, articleId])
+}
+
+model Like {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    likedAt   DateTime @default(now())
+    article   Article  @relation(fields: [articleId], references: [id])
+    articleId String   @db.ObjectId
+    comment   Comment? @relation(fields: [commentId], references: [id])
+    commentId String?  @unique @db.ObjectId
+    user      User?    @relation(fields: [userId], references: [id])
+    userId    String?  @db.ObjectId
+
+    @@unique([userId, articleId])
+}
+
+model Bookmark {
+    id           String   @id @default(auto()) @map("_id") @db.ObjectId
+    article      Article  @relation(fields: [articleId], references: [id])
+    articleId    String   @db.ObjectId
+    bookmarkedAt DateTime @default(now())
+    user         User     @relation(fields: [userId], references: [id])
+    userId       String   @db.ObjectId
+
+    @@unique([userId, articleId])
+}
+
+model Advert {
+    id               String   @id @default(auto()) @map("_id") @db.ObjectId
+    productName      String
+    engagement       Int      @default(0)
+    keywords         String[]
+    keywordsText     String
+    pending_approval Boolean  @default(true)
+    description      String?
+    productImage     File
+    action_link      String
+    amountPaid       Float
+    createdAt        DateTime @default(now())
+    advert_expiry    DateTime
+    postedBy         User     @relation(fields: [postedById], references: [id])
+    postedById       String   @unique @db.ObjectId
+
+    @@index([keywords], name: "KeywordsIndex")
+    @@index([description], name: "DescriptionIndex")
+    @@index([keywordsText], name: "KeywordsTextIndex")
+}
+
+model Boosting {
+    id              String   @id @default(auto()) @map("_id") @db.ObjectId
+    boosting_point  Int      @default(0)
+    boosting_expiry DateTime
+    amountPaid      Float    @default(0)
+    boostedAt       DateTime
+    article         Article  @relation(fields: [articleId], references: [id])
+    articleId       String   @unique @db.ObjectId
+}
+
+model Forum {
+    id              String                @id @default(auto()) @map("_id") @db.ObjectId
+    title           String
+    maxMembers      Int
+    profile_img     File
+    keywords        String[]
+    keywordsText    String
+    description     String?
+    ownerId         String                @db.ObjectId
+    forumReadStatus UserForumReadStatus[]
+    joinRequest     JoinRequest[]
+    createdAt       DateTime              @default(now())
+    messages        ForumMessage[]
+    participants    ForumParticipant[]
+
+    @@index([keywords], name: "KeywordsIndex")
+    @@index([description], name: "DescriptionIndex")
+    @@index([keywordsText], name: "KeywordsTextIndex")
+}
+
+model ForumParticipant {
+    id      String @id @default(auto()) @map("_id") @db.ObjectId
+    user    User   @relation(fields: [userId], references: [id])
+    forum   Forum  @relation(fields: [forumId], references: [id])
+    userId  String @db.ObjectId
+    forumId String @db.ObjectId
+}
+
+model ForumMessage {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    content   String
+    sender    User     @relation(fields: [senderId], references: [id])
+    forum     Forum    @relation(fields: [forumId], references: [id])
+    senderId  String   @db.ObjectId
+    forumId   String   @db.ObjectId
+    createdAt DateTime @default(now())
+
+    @@unique([senderId, forumId])
+}
+
+model UserForumReadStatus {
+    id                String  @id @default(auto()) @map("_id") @db.ObjectId
+    user              User    @relation(fields: [userId], references: [id])
+    forum             Forum   @relation(fields: [forumId], references: [id])
+    lastReadMessageId String? @db.ObjectId
+    userId            String  @db.ObjectId
+    forumId           String  @db.ObjectId
+
+    @@unique([userId, forumId])
+}
+
+model JoinRequest {
+    id          String   @id @default(auto()) @map("_id") @db.ObjectId
+    status      String
+    forum       Forum    @relation(fields: [forumId], references: [id])
+    forumId     String   @unique @db.ObjectId
+    requester   User     @relation(fields: [requesterId], references: [id])
+    requesterId String   @unique @db.ObjectId
+    requestedAt DateTime @default(now())
+
+    @@index([forumId, requesterId], name: "unique_forum_requester")
+}
+
+model Job {
+    id          String     @id @default(auto()) @map("_id") @db.ObjectId
+    name        String
+    description String
+    actionLink  String
+    user        User?      @relation(fields: [userId], references: [id])
+    adminitor   Adminitor? @relation(fields: [adminitorId], references: [id])
+    userId      String?    @unique @db.ObjectId
+    adminitorId String?    @unique @db.ObjectId
+}
+
+model Categories {
+    id   String @id @default(auto()) @map("_id") @db.ObjectId
+    text String @unique
+}
+
+enum MemebershipDuration {
+    Monthly
+    Quaterly
+    SemiAnnual
+    Yearly
+}
+
+enum Roles {
+    user
+    admin
+    auditor
+}
+
+enum UserStatus {
+    Active
+    Suspended
+}
+
+enum TxType {
+    RESOURCE
+    WITHDRAWAL
+    DEPOSIT
+}
+
+enum TxSource {
+    wallet
+    external
+}
+
+type File {
+    idx        String @default(uuid())
+    secure_url String
+    public_id  String
+    public_url String
+}
